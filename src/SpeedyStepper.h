@@ -1,8 +1,11 @@
 
 //      ******************************************************************
 //      *                                                                *
-//      *                Header file for SpeedyStepper.c                 *
+//      *               Header file for SpeedyStepper4Purr.c             *
 //      *                                                                *
+//      *                  Copyright (c) Poing3000, 2023                 *
+//		*																 *
+//      *                             original                           *
 //      *               Copyright (c) S. Reifel & Co, 2014               *
 //      *                                                                *
 //      ******************************************************************
@@ -10,7 +13,8 @@
 
 // MIT License
 // 
-// Copyright (c) 2014 Stanley Reifel & Co.
+// Updates Copyright (c) 2023 Poing3000
+// Original Copyright (c) 2014 Stanley Reifel & Co.
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,49 +35,24 @@
 // SOFTWARE.
 
 
-#ifndef SpeedyStepper_h
-#define SpeedyStepper_h
+#ifndef SpeedyStepper4Purr_h
+#define SpeedyStepper4Purr_h
 
 #include <Arduino.h>
 #include <stdlib.h>
 
 
 //
-// the SpeedyStepper class
+// the SpeedyStepper4Purr class
 //
-class SpeedyStepper
+class SpeedyStepper4Purr
 {
   public:
     //
     // public functions
     //
-    SpeedyStepper();
+    SpeedyStepper4Purr();
     void connectToPins(byte stepPinNumber, byte directionPinNumber);
-    
-    void setStepsPerMillimeter(float motorStepPerMillimeter);
-    float getCurrentPositionInMillimeters();
-    void setCurrentPositionInMillimeters(float currentPositionInMillimeter);
-    void setSpeedInMillimetersPerSecond(float speedInMillimetersPerSecond);
-    void setAccelerationInMillimetersPerSecondPerSecond(float accelerationInMillimetersPerSecondPerSecond);
-    bool moveToHomeInMillimeters(long directionTowardHome, float speedInMillimetersPerSecond, long maxDistanceToMoveInMillimeters, int homeLimitSwitchPin);
-    void moveRelativeInMillimeters(float distanceToMoveInMillimeters);
-    void setupRelativeMoveInMillimeters(float distanceToMoveInMillimeters);
-    void moveToPositionInMillimeters(float absolutePositionToMoveToInMillimeters);
-    void setupMoveInMillimeters(float absolutePositionToMoveToInMillimeters);
-    float getCurrentVelocityInMillimetersPerSecond();
-    
-
-    void setStepsPerRevolution(float motorStepPerRevolution);
-    float getCurrentPositionInRevolutions();
-    void setSpeedInRevolutionsPerSecond(float speedInRevolutionsPerSecond);
-    void setCurrentPositionInRevolutions(float currentPositionInRevolutions);
-    void setAccelerationInRevolutionsPerSecondPerSecond(float accelerationInRevolutionsPerSecondPerSecond);
-    bool moveToHomeInRevolutions(long directionTowardHome, float speedInRevolutionsPerSecond, long maxDistanceToMoveInRevolutions, int homeLimitSwitchPin);
-    void moveRelativeInRevolutions(float distanceToMoveInRevolutions);
-    void setupRelativeMoveInRevolutions(float distanceToMoveInRevolutions);
-    void moveToPositionInRevolutions(float absolutePositionToMoveToInRevolutions);
-    void setupMoveInRevolutions(float absolutePositionToMoveToInRevolutions);
-    float getCurrentVelocityInRevolutionsPerSecond();
 
     void enableStepper(void);
     void disableStepper(void);
@@ -101,8 +80,6 @@ class SpeedyStepper
     float desiredSpeed_InStepsPerSecond;
     float acceleration_InStepsPerSecondPerSecond;
     long targetPosition_InSteps;
-    float stepsPerMillimeter;
-    float stepsPerRevolution;
     bool startNewMove;
     float desiredStepPeriod_InUS;
     long decelerationDistance_InSteps;
