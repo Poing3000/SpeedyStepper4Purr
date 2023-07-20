@@ -2,12 +2,11 @@
 //      ******************************************************************
 //      *                                                                *
 //      *                      Speedy Stepper 4 Purr                     *
-//      *															     *
+//      *															                                   *
 //      *            Poing3000                       20/07/2023          *
 //      *                   Copyright (c) Poing3000, 2023                *
-//      *																 *
-//      *							Original from						 *
-//      *																 *
+//      *																                                 *
+//      *							              Original from				                 *
 //      *                   Speedy Stepper Motor Driver                  *
 //      *                                                                *
 //      *            Stan Reifel                     12/8/2014           *
