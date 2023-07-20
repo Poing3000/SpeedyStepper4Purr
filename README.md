@@ -12,7 +12,7 @@ Please find the superior documentation at the original repository from [S. Reife
 
 ## To do:
 - [ ] Adapt library
-	- [ ] Delete not needed parts (rev&distance functionality)
+	- [x] Delete not needed parts (rev&distance functionality)
 	- [ ] Update Homing 
 		- [ ] Make it non-blocking
 		- [ ] Implement advanced error handling
