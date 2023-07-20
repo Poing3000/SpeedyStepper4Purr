@@ -4,6 +4,7 @@ This library is forked from the great SpeedyStepper library created by S. Reifel
 
 ## Changes implemented:
 → Reduced to "steps/second" functions (deleted per Revolution and Distance functions)
+
 → Adapted Homing function to non-blocking code, advanced error detection/handling and the possibility to change end stop inputs (i.e., from an end stop to driver stall detection).
 
 ## Documentation:
