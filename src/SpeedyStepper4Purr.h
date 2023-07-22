@@ -69,7 +69,9 @@ class SpeedyStepper4Purr
     void setupStop();
     void setSpeedInStepsPerSecond(float speedInStepsPerSecond);
     void setAccelerationInStepsPerSecondPerSecond(float accelerationInStepsPerSecondPerSecond);
+	bool getEndstops(bool whichEndstop);
     byte moveToHome(long directionTowardHome, float speedInStepsPerSecond, long maxDistanceToMoveInSteps, bool useHomeLimitPin);
+	byte ErrorHandling(byte error, long directionTowardHome, float speedInStepsPerSecond, long maxDistanceToMoveInSteps);
     void moveRelativeInSteps(long distanceToMoveInSteps);
     void setupRelativeMoveInSteps(long distanceToMoveInSteps);
     void moveToPositionInSteps(long absolutePositionToMoveToInSteps);

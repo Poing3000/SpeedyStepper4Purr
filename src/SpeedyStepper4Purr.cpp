@@ -49,6 +49,7 @@
 // > Adapted Homing function to (almost) non - blocking code, advanced error detection/handling
 //	 and the possibility to change end stop inputs (i.e., from an end stop to driver stall detection).
 //	> NOTE, the end stop pin must now be declared as an INPUT pin in the main code.
+//  > NOTE, error handling is BLOCKING code.
 
 // =====================================================================================================
 
@@ -212,7 +213,7 @@ void SpeedyStepper4Purr::setAccelerationInStepsPerSecondPerSecond(
 }
 
 
-//
+// HOMING:
 // Home the motor by moving until the homing sensor is activated, then set the 
 // position to zero.
 //  Enter:  directionTowardHome = 1 to move in a positive direction, -1 to move in 
@@ -228,22 +229,31 @@ void SpeedyStepper4Purr::setAccelerationInStepsPerSecondPerSecond(
 // 			2 - returned if aborted due to error: "Enstop always triggered".
 //			3 - returned if aborted due to error: "Enstop not triggered".
 // 			4 - big error, this shoud not happen.
-//
+
+bool SpeedyStepper4Purr::getEndstops(bool whichEndstop) {
+	bool setEndStop;
+	if (whichEndstop) {
+		if (digitalRead(homeEndStop) == HIGH) {
+			setEndStop = true;
+		}
+		else {
+			setEndStop = false;
+		}
+	}
+	else {
+		setEndStop = flagStalled_;
+		flagStalled_ = false;
+	}
+
+	return setEndStop;
+}
+
+
 byte SpeedyStepper4Purr::moveToHome(long directionTowardHome,
 	float speedInStepsPerSecond, long maxDistanceToMoveInSteps, bool useHomeEndStop)
 {
 	bool EndStop;
-	if (useHomeEndStop) {
-		if (digitalRead(homeEndStop) == HIGH) {
-			EndStop = true;
-		}
-		else {
-			EndStop = false;
-		}
-	}
-	else {
-		EndStop = flagStalled_;
-	}
+	EndStop = getEndstops(useHomeEndStop);
 	
 	// Prepare for homing, else do homing.
 	if (!flag_prepareHoming){
@@ -256,14 +266,14 @@ byte SpeedyStepper4Purr::moveToHome(long directionTowardHome,
 			// 10% of maxDistanceToMoveInSteps should be enough to get away from the endstop.
 			setupRelativeMoveInSteps(maxDistanceToMoveInSteps * directionTowardHome * -0.1);
 			while (!processMovement()) {
-				if (EndStop == false) {
+				if (getEndstops(useHomeEndStop) == false) {
 					break;
 				}
 			}
 		//-----------------------------------------------------------------------------------
 		
-			// Check if endstop has actually reacted
-			if (EndStop == false)
+		// Check if endstop has actually reacted
+			if (getEndstops(useHomeEndStop) == true)
 				return(2);
 		}
 		setupRelativeMoveInSteps(maxDistanceToMoveInSteps * directionTowardHome);
@@ -285,31 +295,103 @@ byte SpeedyStepper4Purr::moveToHome(long directionTowardHome,
 		}
 		else {
 			if (!useHomeEndStop) {
-
 				//BLOCKING
 				//-----------------------------------------------------------------------------------
 				//Move to the final start position, since we are homing with stall.
-				if (EndStop == true) {
-					setupRelativeMoveInSteps(200 * directionTowardHome * -1);
-					while (!processMovement()) {
-						if (EndStop == false) {
-							break;
-						}
-					}
-				}
-					//-----------------------------------------------------------------------------------
+				setupRelativeMoveInSteps(200 * directionTowardHome * -1);
+				while (!processMovement());
 			}
+			//-----------------------------------------------------------------------------------
+
 			// Successfully homed, set the current position to 0
 			setCurrentPositionInSteps(0L);
 			flag_prepareHoming = false;
 			return(1);
-		}		
+		}
 	}
 	// This should never be reached.
 	return(4);
 }
 
-/*DELETE BLOCKING?
+// STEPPER ERROR HANDLING:
+// This function is to recover from a stepper error.
+//  Enter:  error code to start relevant error handling.
+//
+//  Exit:	0 - error solved
+//			1 - unknown drivetrain malfunction
+//			2 - slider is stuck
+//			3 - endstop malfunction
+
+byte SpeedyStepper4Purr::ErrorHandling(byte error, long directionTowardHome,
+	float speedInStepsPerSecond, long maxDistanceToMoveInSteps) {
+	switch (error) {
+		// BLOCKING
+		// 1 - SOLVE HOMING ERROR
+		case 1:
+		// ===========================================================================================
+		// If stall is true, either there is an endstop malfunction or the slider is stuck.
+		// (But if stall is not true, than there is an unknown drivetrain error .)
+		// So stall flag is reset to then check if stall apears again while trying to move the slider.
+		// If stall is again true, the slider is stuck and we need to try to free it up.
+		// If stall is false/we got to get the slider unstuck, we can try to home again.
+		// If this fails again, the endstop may not working, so we can try to home with stall.
+		// -------------------------------------------------------------------------------------------
+
+		if (flagStalled_) {
+			flagStalled_ = false;
+			long travelDistance = maxDistanceToMoveInSteps * directionTowardHome * -0.1;
+			moveRelativeInSteps(travelDistance);
+			if (flagStalled_) {
+				//Slider stuck, try to free it up.
+				int i = 1, y = 1;
+				setSpeedInStepsPerSecond(speedInStepsPerSecond * 0.1);	// Reduce to generate more torque.
+
+				// Vibrate slider to free up.
+				// ---------------------------------------------------
+				while (i <= travelDistance) {
+					moveRelativeInSteps(i);
+					if (i > 0) {
+						i = -i;
+					}
+					else {
+
+						if (y < 200) {
+							i = -i + 1;
+							y++;
+						}
+						else {
+							i = -i + y;
+						}
+						setSpeedInStepsPerSecond(speedInStepsPerSecond * 0.1 * y);
+					}
+				}
+				// ---------------------------------------------------
+				setSpeedInStepsPerSecond(speedInStepsPerSecond);	// Reset speed.
+
+				// Check if slider is free now.
+				flagStalled_ = false;
+				moveRelativeInSteps(travelDistance);
+				if (flagStalled_ == true) {
+					// Slider still stuck >> EMGY mode.
+					return(2);
+				}
+				// Slider is free (we can try to home again).
+				return (0);
+			}
+			else {
+				// Possible endstop malfunction (try to home with stall).
+				return(3);
+			}
+		}
+		else {
+			// If stall is false, neither the endstop works nor the stall detection.
+			// Unknown drivetrain malfunction >>EMGY mode.
+			return(1);
+		}
+	}
+	return (0);
+}
+
 //
 // move relative to the current position, units are in steps, this function does 
 // not return until the move is complete
@@ -322,7 +404,7 @@ void SpeedyStepper4Purr::moveRelativeInSteps(long distanceToMoveInSteps)
   
   while(processMovement() != 1);
 }
-*/
+
 
 //
 // setup a move relative to the current position, units are in steps, no motion  
