@@ -13,10 +13,12 @@ Please find the superior documentation at the original repository from [S. Reife
 ## To do:
 - [ ] Adapt library
 	- [x] Delete not needed parts (rev&distance functionality)
-	- [ ] Update Homing 
-		- [ ] Make it non-blocking
-		- [ ] Implement advanced error handling
-		- [ ] Implement flexible endstops (Stall endstop)
+	- [x] Update Homing 
+		- [x] Make it non-blocking
+		- [x] Implement homing error handling
+		- [x] Implement flexible endstops (Stall endstop)
+	- [ ] Include further error handling, if needed (e.g. to handle feeding errors).
+  	- [ ] Cleanup
 - [ ] Include brief documentation for the changes introduced.
 
 
