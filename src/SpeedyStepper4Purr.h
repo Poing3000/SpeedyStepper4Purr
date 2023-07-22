@@ -47,16 +47,16 @@
 class SpeedyStepper4Purr
 {
   //Interrupt Handlling
+  //NOTE: this limits the available steppers to 3
+  static void StallInterrupt0();
   static void StallInterrupt1();
   static void StallInterrupt2();
-
   const byte whichDiag_;
+  static SpeedyStepper4Purr* instance0_;
   static SpeedyStepper4Purr* instance1_;
   static SpeedyStepper4Purr* instance2_;
-
   void StallIndication();
-
-  volatile int flagStalled_;
+  volatile bool flagStalled_;
 
 
   public:

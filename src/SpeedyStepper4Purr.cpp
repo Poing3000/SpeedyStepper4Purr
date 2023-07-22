@@ -61,9 +61,7 @@
 // ---------------------------------------------------------------------------------
 
 
-//
-// constructor for the stepper class
-//
+// Constructor for the stepper class
 SpeedyStepper4Purr::SpeedyStepper4Purr(const byte whichDiag) : whichDiag_ (whichDiag)
 {
   // initialize constants
@@ -77,36 +75,27 @@ SpeedyStepper4Purr::SpeedyStepper4Purr(const byte whichDiag) : whichDiag_ (which
   currentStepPeriod_InUS = 0.0;
   flag_prepareHoming = false;
 
-  flagStalled_ = 0;
+  flagStalled_ = false;
 
 }
 
-//
 //  Connect the stepper object to the IO pins
 //  Enter:  stepPinNumber = IO pin number for the Step
 //          directionPinNumber = IO pin number for the direction bit
 // 			homeEndStopNumber = IO pin number for the home limit switch
-// 			diagPinNumber = IO pin number for the driver stall detection
+// 			homediagPinNumber = IO pin number for the driver stall detection.
+//				>>NOTE: this limits the number of steppers to 3, as only 3
+//						interrupt pins are available (see switch below).
 //
-//void SpeedyStepper4Purr::connectToPins(byte stepPinNumber, byte directionPinNumber, byte homeEndStopNumber, byte diagPinNumber)
 void SpeedyStepper4Purr::connectToPins(byte stepPinNumber, byte directionPinNumber, byte homeEndStopNumber, byte homeDiagPinNumber)
 {
-  //
   // Remember the pin numbers
-  //
   stepPin = stepPinNumber;
   directionPin = directionPinNumber;
   homeEndStop = homeEndStopNumber;
   homeDiagPin = homeDiagPinNumber;
   
-  Serial.println("in connectToPins");
-  Serial.print("homeDiagPin :");
-  Serial.println(homeDiagPin);
-  Serial.print("whichDiag_ :");
-  Serial.println(whichDiag_);
-  //
   // Configure the IO bits
-  //
   pinMode(stepPin, OUTPUT);
   digitalWrite(stepPin, LOW);
 
@@ -115,13 +104,17 @@ void SpeedyStepper4Purr::connectToPins(byte stepPinNumber, byte directionPinNumb
 
   pinMode(homeEndStop, INPUT_PULLUP);
 
-  //Interrupts for stall detection
+  //Assign interrupts for stall detection
   switch (whichDiag_) {
 	case 0:
+		attachInterrupt(digitalPinToInterrupt(homeDiagPin), StallInterrupt0, RISING);
+		instance0_ = this;
+		break;
+	case 1:
 		attachInterrupt(digitalPinToInterrupt(homeDiagPin), StallInterrupt1, RISING);
 		instance1_ = this;
 		break;
-	case 1:
+	case 2:
 		attachInterrupt(digitalPinToInterrupt(homeDiagPin), StallInterrupt2, RISING);
 		instance2_ = this;
 		break;
@@ -129,6 +122,10 @@ void SpeedyStepper4Purr::connectToPins(byte stepPinNumber, byte directionPinNumb
 }
 
 //Interrupt glue routines
+void SpeedyStepper4Purr::StallInterrupt0() {
+	instance0_->StallIndication();
+}
+
 void SpeedyStepper4Purr::StallInterrupt1() {
 	instance1_->StallIndication();
 }
@@ -138,11 +135,12 @@ void SpeedyStepper4Purr::StallInterrupt2() {
 }
 
 //for use by interrupt glue routines
+SpeedyStepper4Purr * SpeedyStepper4Purr::instance0_;
 SpeedyStepper4Purr * SpeedyStepper4Purr::instance1_;
 SpeedyStepper4Purr * SpeedyStepper4Purr::instance2_;
 
 void SpeedyStepper4Purr::StallIndication() {
-	flagStalled_++;
+	flagStalled_ = true;
 }
 
 
@@ -234,13 +232,17 @@ void SpeedyStepper4Purr::setAccelerationInStepsPerSecondPerSecond(
 byte SpeedyStepper4Purr::moveToHome(long directionTowardHome,
 	float speedInStepsPerSecond, long maxDistanceToMoveInSteps, bool useHomeEndStop)
 {
-	byte EndStop;
+	bool EndStop;
 	if (useHomeEndStop) {
-		EndStop = digitalRead(homeEndStop);
+		if (digitalRead(homeEndStop) == HIGH) {
+			EndStop = true;
+		}
+		else {
+			EndStop = false;
+		}
 	}
 	else {
-		//TODO: Implement stall detection
-		//endstop = STALL_INPUT;
+		EndStop = flagStalled_;
 	}
 	
 	// Prepare for homing, else do homing.
@@ -250,18 +252,18 @@ byte SpeedyStepper4Purr::moveToHome(long directionTowardHome,
 		//BLOCKING
 		//-----------------------------------------------------------------------------------
 		//Move once away from Endstop in case that it is allready in the target zone.
-		if (EndStop == HIGH) {
+		if (EndStop == true) {
 			// 10% of maxDistanceToMoveInSteps should be enough to get away from the endstop.
 			setupRelativeMoveInSteps(maxDistanceToMoveInSteps * directionTowardHome * -0.1);
 			while (!processMovement()) {
-				if (EndStop == LOW) {
+				if (EndStop == false) {
 					break;
 				}
 			}
 		//-----------------------------------------------------------------------------------
 		
 			// Check if endstop has actually reacted
-			if (EndStop == LOW)
+			if (EndStop == false)
 				return(2);
 		}
 		setupRelativeMoveInSteps(maxDistanceToMoveInSteps * directionTowardHome);
@@ -271,7 +273,7 @@ byte SpeedyStepper4Purr::moveToHome(long directionTowardHome,
 
 	// Do homing
 	else {	
-		if (EndStop == LOW) {
+		if (EndStop == false) {
 			if (processMovement() == true) {
 				//Error, endstop not found
 				return(3);
@@ -282,6 +284,21 @@ byte SpeedyStepper4Purr::moveToHome(long directionTowardHome,
 			}
 		}
 		else {
+			if (!useHomeEndStop) {
+
+				//BLOCKING
+				//-----------------------------------------------------------------------------------
+				//Move to the final start position, since we are homing with stall.
+				if (EndStop == true) {
+					setupRelativeMoveInSteps(200 * directionTowardHome * -1);
+					while (!processMovement()) {
+						if (EndStop == false) {
+							break;
+						}
+					}
+				}
+					//-----------------------------------------------------------------------------------
+			}
 			// Successfully homed, set the current position to 0
 			setCurrentPositionInSteps(0L);
 			flag_prepareHoming = false;
