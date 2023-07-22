@@ -41,27 +41,35 @@
 #include <Arduino.h>
 #include <stdlib.h>
 
-
 //
 // the SpeedyStepper4Purr class
 //
 class SpeedyStepper4Purr
 {
-  public:
-    //
-    // public functions
-    //
-    SpeedyStepper4Purr();
-    void connectToPins(byte stepPinNumber, byte directionPinNumber);
+  //Interrupt Handlling
+  static void StallInterrupt1();
+  static void StallInterrupt2();
 
-    void enableStepper(void);
-    void disableStepper(void);
+  const byte whichDiag_;
+  static SpeedyStepper4Purr* instance1_;
+  static SpeedyStepper4Purr* instance2_;
+
+  void StallIndication();
+
+  volatile int flagStalled_;
+
+
+  public:
+
+    // public functions
+    SpeedyStepper4Purr(const byte whichDiag);
+    void connectToPins(byte stepPinNumber, byte directionPinNumber, byte homeEndStopNumber, byte homeDiagPinNumber);
     void setCurrentPositionInSteps(long currentPositionInSteps);
     long getCurrentPositionInSteps();
     void setupStop();
     void setSpeedInStepsPerSecond(float speedInStepsPerSecond);
     void setAccelerationInStepsPerSecondPerSecond(float accelerationInStepsPerSecondPerSecond);
-    bool moveToHomeInSteps(long directionTowardHome, float speedInStepsPerSecond, long maxDistanceToMoveInSteps, int homeSwitchPin);
+    byte moveToHome(long directionTowardHome, float speedInStepsPerSecond, long maxDistanceToMoveInSteps, bool useHomeLimitPin);
     void moveRelativeInSteps(long distanceToMoveInSteps);
     void setupRelativeMoveInSteps(long distanceToMoveInSteps);
     void moveToPositionInSteps(long absolutePositionToMoveToInSteps);
@@ -70,13 +78,13 @@ class SpeedyStepper4Purr
     float getCurrentVelocityInStepsPerSecond(); 
     bool processMovement(void);
 
-
   private:
-    //
+
     // private member variables
-    //
     byte stepPin;
     byte directionPin;
+	byte homeEndStop;
+	byte homeDiagPin;
     float desiredSpeed_InStepsPerSecond;
     float acceleration_InStepsPerSecondPerSecond;
     long targetPosition_InSteps;
@@ -90,6 +98,7 @@ class SpeedyStepper4Purr
     float acceleration_InStepsPerUSPerUS;
     float currentStepPeriod_InUS;
     long currentPosition_InSteps;
+	bool flag_prepareHoming;
 };
 
 // ------------------------------------ End ---------------------------------

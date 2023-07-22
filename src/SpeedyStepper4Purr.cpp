@@ -46,59 +46,103 @@
 //
 // Changes implemented:
 // > Reduced to "steps/second" functions (deleted per Revolution and Distance functions).
-// > Adapted Homing function to non - blocking code, advanced error detection/handling
-// and the possibility to change end stop inputs (i.e., from an end stop to driver stall detection).
+// > Adapted Homing function to (almost) non - blocking code, advanced error detection/handling
+//	 and the possibility to change end stop inputs (i.e., from an end stop to driver stall detection).
+//	> NOTE, the end stop pin must now be declared as an INPUT pin in the main code.
 
 // =====================================================================================================
 
 
-
 #include "SpeedyStepper4Purr.h"
+
 
 // ---------------------------------------------------------------------------------
 //                                  Setup functions 
 // ---------------------------------------------------------------------------------
 
+
 //
 // constructor for the stepper class
 //
-SpeedyStepper4Purr::SpeedyStepper4Purr()
+SpeedyStepper4Purr::SpeedyStepper4Purr(const byte whichDiag) : whichDiag_ (whichDiag)
 {
-  //
   // initialize constants
-  //
   stepPin = 0;
   directionPin = 0;
+  homeEndStop = 0;
+  homeDiagPin = 0;
   currentPosition_InSteps = 0;
   desiredSpeed_InStepsPerSecond = 200.0;
   acceleration_InStepsPerSecondPerSecond = 200.0;
   currentStepPeriod_InUS = 0.0;
+  flag_prepareHoming = false;
+
+  flagStalled_ = 0;
+
 }
 
-
 //
-// connect the stepper object to the IO pins
+//  Connect the stepper object to the IO pins
 //  Enter:  stepPinNumber = IO pin number for the Step
 //          directionPinNumber = IO pin number for the direction bit
-//          enablePinNumber = IO pin number for the enable bit (LOW is enabled)
-//            set to 0 if enable is not supported
+// 			homeEndStopNumber = IO pin number for the home limit switch
+// 			diagPinNumber = IO pin number for the driver stall detection
 //
-void SpeedyStepper4Purr::connectToPins(byte stepPinNumber, byte directionPinNumber)
+//void SpeedyStepper4Purr::connectToPins(byte stepPinNumber, byte directionPinNumber, byte homeEndStopNumber, byte diagPinNumber)
+void SpeedyStepper4Purr::connectToPins(byte stepPinNumber, byte directionPinNumber, byte homeEndStopNumber, byte homeDiagPinNumber)
 {
   //
-  // remember the pin numbers
+  // Remember the pin numbers
   //
   stepPin = stepPinNumber;
   directionPin = directionPinNumber;
+  homeEndStop = homeEndStopNumber;
+  homeDiagPin = homeDiagPinNumber;
   
+  Serial.println("in connectToPins");
+  Serial.print("homeDiagPin :");
+  Serial.println(homeDiagPin);
+  Serial.print("whichDiag_ :");
+  Serial.println(whichDiag_);
   //
-  // configure the IO bits
+  // Configure the IO bits
   //
   pinMode(stepPin, OUTPUT);
   digitalWrite(stepPin, LOW);
 
   pinMode(directionPin, OUTPUT);
   digitalWrite(directionPin, LOW);
+
+  pinMode(homeEndStop, INPUT_PULLUP);
+
+  //Interrupts for stall detection
+  switch (whichDiag_) {
+	case 0:
+		attachInterrupt(digitalPinToInterrupt(homeDiagPin), StallInterrupt1, RISING);
+		instance1_ = this;
+		break;
+	case 1:
+		attachInterrupt(digitalPinToInterrupt(homeDiagPin), StallInterrupt2, RISING);
+		instance2_ = this;
+		break;
+  }
+}
+
+//Interrupt glue routines
+void SpeedyStepper4Purr::StallInterrupt1() {
+	instance1_->StallIndication();
+}
+
+void SpeedyStepper4Purr::StallInterrupt2() {
+	instance2_->StallIndication();
+}
+
+//for use by interrupt glue routines
+SpeedyStepper4Purr * SpeedyStepper4Purr::instance1_;
+SpeedyStepper4Purr * SpeedyStepper4Purr::instance2_;
+
+void SpeedyStepper4Purr::StallIndication() {
+	flagStalled_++;
 }
 
 
@@ -108,9 +152,9 @@ void SpeedyStepper4Purr::connectToPins(byte stepPinNumber, byte directionPinNumb
 
 
 //
-// set the current position of the motor in steps, this does not move the motor
+// Set the current position of the motor, this does not move the motor
 // Note: This function should only be called when the motor is stopped
-//    Enter:  currentPositionInSteps = the new position of the motor in steps
+//	Enter:  currentPositionInSteps = the new position of the motor in steps
 //
 void SpeedyStepper4Purr::setCurrentPositionInSteps(long currentPositionInSteps)
 {
@@ -118,43 +162,38 @@ void SpeedyStepper4Purr::setCurrentPositionInSteps(long currentPositionInSteps)
 }
 
 
-
 //
-// get the current position of the motor in steps, this functions is updated
+// Get the current position of the motor, this functions is updated
 // while the motor moves
-//  Exit:  a signed motor position in steps returned
+//	Exit:  a signed motor position in steps returned
 //
 long SpeedyStepper4Purr::getCurrentPositionInSteps()
 {
   return(currentPosition_InSteps);
 }
 
-
-
+/*NEEDED/DELETE
 //
-// setup a "Stop" to begin the process of decelerating from the current velocity to  
-// zero, decelerating requires calls to processMove() until the move is complete
-// Note: This function can be used to stop a motion initiated in units of steps or 
-// revolutions
+// Setup a "Stop" to begin the process of decelerating from the current velocity to  
+// zero, decelerating requires calls to processMove() until the move is complete.
 //
 void SpeedyStepper4Purr::setupStop()
 {
   //
-  // move the target position so that the motor will begin deceleration now
+  // Move the target position so that the motor will begin deceleration now.
   //
   if (direction_Scaler > 0)
     targetPosition_InSteps = currentPosition_InSteps + decelerationDistance_InSteps;
   else
     targetPosition_InSteps = currentPosition_InSteps - decelerationDistance_InSteps;
 }
-
-
+*/
 
 //
-// set the maximum speed, units in steps/second, this is the maximum speed reached  
+// Set the maximum speed, this is the maximum speed reached  
 // while accelerating
 // Note: this can only be called when the motor is stopped
-//  Enter:  speedInStepsPerSecond = speed to accelerate up to, units in steps/second
+//	Enter:  speedInStepsPerSecond = speed to accelerate up to, units in steps/second
 //
 void SpeedyStepper4Purr::setSpeedInStepsPerSecond(float speedInStepsPerSecond)
 {
@@ -162,9 +201,8 @@ void SpeedyStepper4Purr::setSpeedInStepsPerSecond(float speedInStepsPerSecond)
 }
 
 
-
 //
-// set the rate of acceleration, units in steps/second/second
+// Set the rate of acceleration.
 // Note: this can only be called when the motor is stopped
 //  Enter:  accelerationInStepsPerSecondPerSecond = rate of acceleration, units in 
 //          steps/second/second
@@ -176,127 +214,85 @@ void SpeedyStepper4Purr::setAccelerationInStepsPerSecondPerSecond(
 }
 
 
-
 //
-// home the motor by moving until the homing sensor is activated, then set the 
-// position to zero with units in steps
+// Home the motor by moving until the homing sensor is activated, then set the 
+// position to zero.
 //  Enter:  directionTowardHome = 1 to move in a positive direction, -1 to move in 
-//             a negative directions 
+//             a negative directions.
 //          speedInStepsPerSecond = speed to accelerate up to while moving toward 
-//             home, units in steps/second
+//             home.
 //          maxDistanceToMoveInSteps = unsigned maximum distance to move toward 
-//             home before giving up
-//          homeSwitchPin = pin number of the home switch, switch should be 
-//             configured to go low when at home
-//  Exit:   true returned if successful, else false
+//             home before giving up.
+//          homeEndstop = true if the homing sensor is an endstop switch,
+//			   false for fallbacl method (i.e. by stall detection). 
+//  Exit:   0 - returned if still homing
+//			1 - returned if successful
+// 			2 - returned if aborted due to error: "Enstop always triggered".
+//			3 - returned if aborted due to error: "Enstop not triggered".
+// 			4 - big error, this shoud not happen.
 //
-bool SpeedyStepper4Purr::moveToHomeInSteps(long directionTowardHome, 
-  float speedInStepsPerSecond, long maxDistanceToMoveInSteps, int homeLimitSwitchPin)
+byte SpeedyStepper4Purr::moveToHome(long directionTowardHome,
+	float speedInStepsPerSecond, long maxDistanceToMoveInSteps, bool useHomeEndStop)
 {
-  float originalDesiredSpeed_InStepsPerSecond;
-  bool limitSwitchFlag;
-  
-  
-  //
-  // setup the home switch input pin
-  //
-  pinMode(homeLimitSwitchPin, INPUT_PULLUP);
-  
-  
-  //
-  // remember the current speed setting
-  //
-  originalDesiredSpeed_InStepsPerSecond = desiredSpeed_InStepsPerSecond; 
- 
- 
-  //
-  // if the home switch is not already set, move toward it
-  //
-  if (digitalRead(homeLimitSwitchPin) == HIGH)
-  {
-    //
-    // move toward the home switch
-    //
-    setSpeedInStepsPerSecond(speedInStepsPerSecond);
-    setupRelativeMoveInSteps(maxDistanceToMoveInSteps * directionTowardHome);
-    limitSwitchFlag = false;
-    while(!processMovement())
-    {
-      if (digitalRead(homeLimitSwitchPin) == LOW)
-      {
-        limitSwitchFlag = true;
-        break;
-      }
-    }
-    
-    //
-    // check if switch never detected
-    //
-    if (limitSwitchFlag == false)
-      return(false);
-  }
-  delay(25);
+	byte EndStop;
+	if (useHomeEndStop) {
+		EndStop = digitalRead(homeEndStop);
+	}
+	else {
+		//TODO: Implement stall detection
+		//endstop = STALL_INPUT;
+	}
+	
+	// Prepare for homing, else do homing.
+	if (!flag_prepareHoming){
+		setSpeedInStepsPerSecond(speedInStepsPerSecond);
 
+		//BLOCKING
+		//-----------------------------------------------------------------------------------
+		//Move once away from Endstop in case that it is allready in the target zone.
+		if (EndStop == HIGH) {
+			// 10% of maxDistanceToMoveInSteps should be enough to get away from the endstop.
+			setupRelativeMoveInSteps(maxDistanceToMoveInSteps * directionTowardHome * -0.1);
+			while (!processMovement()) {
+				if (EndStop == LOW) {
+					break;
+				}
+			}
+		//-----------------------------------------------------------------------------------
+		
+			// Check if endstop has actually reacted
+			if (EndStop == LOW)
+				return(2);
+		}
+		setupRelativeMoveInSteps(maxDistanceToMoveInSteps * directionTowardHome);
+		flag_prepareHoming = true;
+		return(0);
+	}
 
-  //
-  // the switch has been detected, now move away from the switch
-  //
-  setupRelativeMoveInSteps(maxDistanceToMoveInSteps * directionTowardHome * -1);
-  limitSwitchFlag = false;
-  while(!processMovement())
-  {
-    if (digitalRead(homeLimitSwitchPin) == HIGH)
-    {
-      limitSwitchFlag = true;
-      break;
-    }
-  }
-  delay(25);
-  
-  //
-  // check if switch never detected
-  //
-  if (limitSwitchFlag == false)
-    return(false);
-
-
-  //
-  // have now moved off the switch, move toward it again but slower
-  //
-  setSpeedInStepsPerSecond(speedInStepsPerSecond/8);
-  setupRelativeMoveInSteps(maxDistanceToMoveInSteps * directionTowardHome);
-  limitSwitchFlag = false;
-  while(!processMovement())
-  {
-    if (digitalRead(homeLimitSwitchPin) == LOW)
-    {
-      limitSwitchFlag = true;
-      break;
-    }
-  }
-  delay(25);
-  
-  //
-  // check if switch never detected
-  //
-  if (limitSwitchFlag == false)
-    return(false);
-
-
-  //
-  // successfully homed, set the current position to 0
-  //
-  setCurrentPositionInSteps(0L);    
-
-  //
-  // restore original velocity
-  //
-  setSpeedInStepsPerSecond(originalDesiredSpeed_InStepsPerSecond);
-  return(true);
+	// Do homing
+	else {	
+		if (EndStop == LOW) {
+			if (processMovement() == true) {
+				//Error, endstop not found
+				return(3);
+			}
+			else {
+				//Still homing
+				return(0);
+			}
+		}
+		else {
+			// Successfully homed, set the current position to 0
+			setCurrentPositionInSteps(0L);
+			flag_prepareHoming = false;
+			return(1);
+		}		
+	}
+	// This should never be reached.
+	return(4);
 }
 
-
-
+/*DELETE BLOCKING?
 //
 // move relative to the current position, units are in steps, this function does 
 // not return until the move is complete
@@ -307,11 +303,9 @@ void SpeedyStepper4Purr::moveRelativeInSteps(long distanceToMoveInSteps)
 {
   setupRelativeMoveInSteps(distanceToMoveInSteps);
   
-  while(!processMovement())
-    ;
+  while(processMovement() != 1);
 }
-
-
+*/
 
 //
 // setup a move relative to the current position, units are in steps, no motion  
@@ -325,8 +319,7 @@ void SpeedyStepper4Purr::setupRelativeMoveInSteps(long distanceToMoveInSteps)
   setupMoveInSteps(currentPosition_InSteps + distanceToMoveInSteps);
 }
 
-
-
+/*DELETE BLOCKING?
 //
 // move to the given absolute position, units are in steps, this function does not 
 // return until the move is complete
@@ -337,11 +330,10 @@ void SpeedyStepper4Purr::moveToPositionInSteps(long absolutePositionToMoveToInSt
 {
   setupMoveInSteps(absolutePositionToMoveToInSteps);
   
-  while(!processMovement())
+  while(processMovement() != 1)
     ;
 }
-
-
+*/
 
 //
 // setup a move, units are in steps, no motion occurs until processMove() is called
