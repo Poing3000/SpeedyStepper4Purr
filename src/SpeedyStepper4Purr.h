@@ -40,21 +40,24 @@
 
 #include <Arduino.h>
 #include <stdlib.h>
+#include <MCP23017.h>
 
-//
-// the SpeedyStepper4Purr class
-//
+
+
+//  SpeedyStepper4Purr class
 class SpeedyStepper4Purr
 {
   //Interrupt Handlling
-  //NOTE: this limits the available steppers to 3
+  //NOTE: this limits the available steppers to 4
   static void StallInterrupt0();
   static void StallInterrupt1();
   static void StallInterrupt2();
+  static void StallInterrupt3();
   const byte whichDiag_;
   static SpeedyStepper4Purr* instance0_;
   static SpeedyStepper4Purr* instance1_;
   static SpeedyStepper4Purr* instance2_;
+  static SpeedyStepper4Purr* instance3_;
   void StallIndication();
   volatile bool flagStalled_;
 
@@ -70,15 +73,16 @@ class SpeedyStepper4Purr
     void setSpeedInStepsPerSecond(float speedInStepsPerSecond);
     void setAccelerationInStepsPerSecondPerSecond(float accelerationInStepsPerSecondPerSecond);
 	bool getEndstops(bool whichEndstop);
-    byte moveToHome(long directionTowardHome, float speedInStepsPerSecond, long maxDistanceToMoveInSteps, bool useHomeLimitPin);
-	byte ErrorHandling(byte error, long directionTowardHome, float speedInStepsPerSecond, long maxDistanceToMoveInSteps);
-    void moveRelativeInSteps(long distanceToMoveInSteps);
+    byte moveToHome(long directionTowardHome, long maxDistanceToMoveInSteps, bool useHomeEndStop);
+	byte ErrorHandling(long directionTowardHome, long maxDistanceToMoveInSteps, long normal_distance);
+    bool moveRelativeInSteps(long distanceToMoveInSteps);
     void setupRelativeMoveInSteps(long distanceToMoveInSteps);
     void moveToPositionInSteps(long absolutePositionToMoveToInSteps);
     void setupMoveInSteps(long absolutePositionToMoveToInSteps);
     bool motionComplete();
     float getCurrentVelocityInStepsPerSecond(); 
     bool processMovement(void);
+	bool checkStall();
 
   private:
 
@@ -100,7 +104,27 @@ class SpeedyStepper4Purr
     float acceleration_InStepsPerUSPerUS;
     float currentStepPeriod_InUS;
     long currentPosition_InSteps;
-	bool flag_prepareHoming;
+
+    enum HomingState {
+        NOT_HOMING,
+        MOVING_AWAY_FROM_ENDSTOP,
+        MOVING_TOWARD_ENDSTOP,
+    }; HomingState homingState;
+
+    enum HomingResult {
+		HOMING_IN_PROGRESS,
+		HOMING_COMPLETE,
+        HOMING_ERROR_STUCK_HIGH,
+        HOMING_ERROR_STUCK_LOW,
+	}; HomingResult homingResult;
+
+    enum ErrorState {
+        ERROR_FREED,
+        ERROR_UNKNOWN,
+        ERROR_JAMMED,
+        ERROR_ENDSTOP,
+    }; ErrorState errorState;
+
 };
 
 // ------------------------------------ End ---------------------------------
