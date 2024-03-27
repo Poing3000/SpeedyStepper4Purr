@@ -17,7 +17,7 @@ Please find the superior documentation at the original repository from [S. Reife
 		- [x] Make it non-blocking
 		- [x] Implement homing error handling
 		- [x] Implement flexible endstops (Stall endstop)
-	- [ ] Include further error handling, if needed (e.g. to handle feeding errors).
+	- [x] Include further error handling, if needed (e.g. to handle feeding errors).
   	- [ ] Cleanup
 - [ ] Include brief documentation for the changes introduced.
 
