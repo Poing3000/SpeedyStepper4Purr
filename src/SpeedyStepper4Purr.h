@@ -69,7 +69,6 @@ class SpeedyStepper4Purr
     void connectToPins(byte stepPinNumber, byte directionPinNumber, byte homeEndStopNumber, byte homeDiagPinNumber);
     void setCurrentPositionInSteps(long currentPositionInSteps);
     long getCurrentPositionInSteps();
-    void setupStop();
     void setSpeedInStepsPerSecond(float speedInStepsPerSecond);
     void setAccelerationInStepsPerSecondPerSecond(float accelerationInStepsPerSecondPerSecond);
 	bool getEndstops(bool whichEndstop);
@@ -77,10 +76,10 @@ class SpeedyStepper4Purr
 	byte ErrorHandling(long directionTowardHome, long maxDistanceToMoveInSteps, long normal_distance);
     bool moveRelativeInSteps(long distanceToMoveInSteps);
     void setupRelativeMoveInSteps(long distanceToMoveInSteps);
-    void moveToPositionInSteps(long absolutePositionToMoveToInSteps);
+    //void moveToPositionInSteps(long absolutePositionToMoveToInSteps);
     void setupMoveInSteps(long absolutePositionToMoveToInSteps);
     bool motionComplete();
-    float getCurrentVelocityInStepsPerSecond(); 
+    //float getCurrentVelocityInStepsPerSecond(); 
     bool processMovement(void);
 	bool checkStall();
 

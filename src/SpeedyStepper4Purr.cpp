@@ -179,6 +179,17 @@ long SpeedyStepper4Purr::getCurrentPositionInSteps()
   return(currentPosition_InSteps);
 }
 
+//
+// Check if the motor has completed its move to the target position
+// Exit: true returned if the stepper is at the target position
+//
+bool SpeedyStepper4Purr::motionComplete()
+{
+	if (currentPosition_InSteps == targetPosition_InSteps)
+		return(true);
+	else
+		return(false);
+}
 
 // Set the maximum speed, this is the maximum speed reached  
 // while accelerating
@@ -270,6 +281,8 @@ byte SpeedyStepper4Purr::moveToHome(long directionTowardHome, long maxDistanceTo
 			if (endStop) {
 				homingState = NOT_HOMING;
 				homingResult = HOMING_COMPLETE; // Successfully homed.
+				currentPosition_InSteps = 0;	// Set position to zero.
+				targetPosition_InSteps = 0;		// Reset target position.
 			} else if (!processMovement()) { 
 				homingResult = HOMING_IN_PROGRESS; // Still homing.
 			} else {
@@ -288,7 +301,7 @@ byte SpeedyStepper4Purr::moveToHome(long directionTowardHome, long maxDistanceTo
 //  Exit:	0 - stuck but solved/freed
 //			1 - unknown drivetrain malfunction
 //			2 - slider is jammed
-//			3 - endstop malfunction or path blocked
+//			3 - endstop malfunction, solved with stall detection
 
 byte SpeedyStepper4Purr::ErrorHandling(long directionTowardHome,
 	long maxDistanceToMoveInSteps, long normal_distance) {
@@ -599,46 +612,5 @@ bool SpeedyStepper4Purr::checkStall() {
 	}
 }
 
-//NEEDED/DELETE?
-/*
-
-//
-// Get the current velocity of the motor in steps/second.  This functions is updated
-// while it accelerates up and down in speed.  This is not the desired speed, but  
-// the speed the motor should be moving at the time the function is called.  This  
-// is a signed value and is negative when the motor is moving backwards.
-// Note: This speed will be incorrect if the desired velocity is set faster than
-// this library can generate steps, or if the load on the motor is too great for
-// the amount of torque that it can generate.
-//  Exit:  velocity speed in steps per second returned, signed
-//
-float SpeedyStepper4Purr::getCurrentVelocityInStepsPerSecond()
-{
-  if (currentStepPeriod_InUS == 0.0)
-    return(0);
-  else
-  {
-    if (direction_Scaler > 0)
-      return(1000000.0 / currentStepPeriod_InUS);
-    else
-      return(-1000000.0 / currentStepPeriod_InUS);
-  }
-}
-
-
-
-//
-// check if the motor has completed its move to the target position
-// Exit: true returned if the stepper is at the target position
-//
-bool SpeedyStepper4Purr::motionComplete()
-{
-  if (currentPosition_InSteps == targetPosition_InSteps)
-    return(true);
-  else
-    return(false);
-}
-
-*/
 // -------------------------------------- End --------------------------------------
 
