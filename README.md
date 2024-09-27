@@ -9,7 +9,9 @@ This library is forked from the great SpeedyStepper library created by S. Reifel
   and the possibility to change end stop inputs (i.e., from an end stop to driver stall detection).
 
 NOTE, if the end stop pin (homeEndStopNumber) is set to 99, the end stop signal is expected from an external source / function (see move home).
+
 NOTE, error handling is BLOCKING code.
+
 WARNING, limited to 4 steppers, as only 4 interrupt pins are available (see switch below).
 
 ## Documentation:
