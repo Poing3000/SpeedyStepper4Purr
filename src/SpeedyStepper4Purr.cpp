@@ -2,11 +2,11 @@
 //      ******************************************************************
 //      *                                                                *
 //      *                      Speedy Stepper 4 Purr                     *
-//      *								 *
+//      *																 *
 //      *            Poing3000                       20/07/2023          *
 //      *                   Copyright (c) Poing3000, 2023                *
-//      *								 *
-//      *			   Original from			 *
+//      *																 *
+//      *							Original from						 *
 //      *                   Speedy Stepper Motor Driver                  *
 //      *                                                                *
 //      *            Stan Reifel                     12/8/2014           *
@@ -600,7 +600,7 @@ bool SpeedyStepper4Purr::processMovement(void)
   return(false);
 }
 
-//CHECK Stalls
+// CHECK Stalls
 //  Exit:  true returned if motor is stalled, false returned if motor is not stalled
 bool SpeedyStepper4Purr::checkStall() {
 	if(flagStalled_ == true) {
