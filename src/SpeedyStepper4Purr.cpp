@@ -452,21 +452,6 @@ void SpeedyStepper4Purr::setupRelativeMoveInSteps(long distanceToMoveInSteps)
   setupMoveInSteps(currentPosition_InSteps + distanceToMoveInSteps);
 }
 
-/*DELETE BLOCKING?
-//
-// move to the given absolute position, units are in steps, this function does not 
-// return until the move is complete
-//  Enter:  absolutePositionToMoveToInSteps = signed absolute position to move to  
-//            in units of steps
-//
-void SpeedyStepper4Purr::moveToPositionInSteps(long absolutePositionToMoveToInSteps)
-{
-  setupMoveInSteps(absolutePositionToMoveToInSteps);
-  
-  while(processMovement() != 1)
-    ;
-}
-*/
 
 // Setup move
 // setup a move, units are in steps, no motion occurs until processMove() is called
